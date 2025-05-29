@@ -186,7 +186,7 @@ if sheet_url:
             with col4:
                 st.markdown("### Carga laboral por reclutador")
                 if "¿Posicion abierta?" in df.columns and "Nombre reclutador" in df.columns:
-                    carga = df[df["¿Posicion abierta?"].astype(str).str.lower().str.strip() == "si"]
+                    carga = df[df["¿Posicion abierta?"].astype(str).str.lower().str.strip() != "no"]
                     carga = carga.groupby("Nombre reclutador").size().reset_index(name="Posiciones abiertas")
                     if not carga.empty:
                         fig, ax = plt.subplots(figsize=(6, 2))
