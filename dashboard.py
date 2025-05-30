@@ -17,7 +17,8 @@ def cargar_datos_desde_sheets(sheet_url):
     return pd.read_csv(StringIO(response.content.decode('utf-8')))
 
 def filtrar_datos(df, fecha_inicio, fecha_fin, posicion):
-    df["Fecha"] = pd.to_datetime(df["Fecha"], errors="coerce")
+    df = df.dropna(subset=["Fecha"])
+    df["Fecha"] = pd.to_datetime(df["Fecha"], dayfirst=True, errors="coerce")
     fecha_inicio = pd.to_datetime(fecha_inicio, errors="coerce")
     fecha_fin = pd.to_datetime(fecha_fin, errors="coerce")
 
