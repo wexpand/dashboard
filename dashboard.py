@@ -132,7 +132,7 @@ if sheet_url:
             with col1:
                 primer_viable = df_filtrado[df_filtrado["Recruitment. Candidatos Viables"] > 0]["Fecha"].min()
                 ultima_contrata = df_filtrado[df_filtrado["Candidatos contratados"] > 0]["Fecha"].max()
-                st.markdown("### ⏱Velocidad de Contratación")
+                st.markdown("### Velocidad de Contratación")
                 if pd.notna(primer_viable) and pd.notna(ultima_contrata):
                     dias = (ultima_contrata - primer_viable).days
                     if dias > 12:
@@ -185,17 +185,40 @@ if sheet_url:
 
             with col4:
                 st.markdown("### Carga laboral por reclutador")
-                if "¿Posicion abierta?" in df.columns and "Nombre reclutador" in df.columns:
-                    carga = df[df["¿Posicion abierta?"].astype(str).str.lower().str.strip() != "no"]
-                    carga = carga.groupby("Nombre reclutador").size().reset_index(name="Posiciones abiertas")
-                    if not carga.empty:
-                        fig, ax = plt.subplots(figsize=(6, 2))
-                        colores = [color_por_carga(x) for x in carga["Posiciones abiertas"]]
-                        ax.bar(carga["Nombre reclutador"], carga["Posiciones abiertas"], color=colores)
-                        ax.set_title("Carga laboral")
-                        ax.set_ylabel("Abiertas")
-                        plt.xticks(rotation=45)
-                        st.pyplot(fig) 
+            
+                # Normalizamos los campos antes de procesar
+                df["¿Posicion abierta?"] = df["¿Posicion abierta?"].astype(str).str.lower().str.strip()
+                df["Nombre reclutador"] = df["Nombre reclutador"].astype(str).str.strip()
+                df["Posicion"] = df["Posicion"].astype(str).str.strip()
+            
+                # Eliminar registros sin fecha válida
+                df = df.dropna(subset=["Fecha"])
+            
+                # Agrupamos por posición y tomamos el registro más reciente
+                ultimos = df.loc[df.groupby("Posicion")["Fecha"].idxmax()]
+            
+                # Filtrar posiciones abiertas
+                abiertas = ultimos[ultimos["¿Posicion abierta?"] != "no"]
+            
+                # Agrupamos correctamente por reclutador
+                resumen = abiertas.groupby("Nombre reclutador").size().reset_index(name="Posiciones abiertas")
+                posiciones_por_reclutador = abiertas.groupby("Nombre reclutador")["Posicion"].apply(list).reset_index(name="Lista de posiciones")
+                resumen_completo = pd.merge(resumen, posiciones_por_reclutador, on="Nombre reclutador")
+            
+                if not resumen_completo.empty:
+                    fig, ax = plt.subplots(figsize=(6, 2))
+                    colores = [color_por_carga(x) for x in resumen_completo["Posiciones abiertas"]]
+                    ax.bar(resumen_completo["Nombre reclutador"], resumen_completo["Posiciones abiertas"], color=colores)
+                    ax.set_title("Carga laboral")
+                    ax.set_ylabel("Abiertas")
+                    plt.xticks(rotation=45)
+                    st.pyplot(fig)
+            
+                    st.markdown("### Detalle de posiciones abiertas por reclutador")
+                    st.dataframe(resumen_completo, use_container_width=True)
+                else:
+                    st.info("No hay posiciones abiertas actualmente.")
+ 
 
         elif pagina == "Evaluación y Conversión":
             st.markdown("### Etapa 1: Captación y evaluación por reclutador")
