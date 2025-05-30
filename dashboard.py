@@ -131,15 +131,21 @@ if sheet_url:
 
             col1, col2 = st.columns([1, 2])
             with col1:
-                primer_viable = df_filtrado[df_filtrado["Recruitment. Candidatos Viables"] > 0]["Fecha"].min()
+                # Fecha de apertura: primer registro en el dataset filtrado
+                fecha_apertura = df_filtrado["Fecha"].min()
+                
+                # Fecha de contratación: última contratación registrada
                 ultima_contrata = df_filtrado[df_filtrado["Candidatos contratados"] > 0]["Fecha"].max()
-                st.markdown("### Velocidad de Contratación")
-                if pd.notna(primer_viable) and pd.notna(ultima_contrata):
-                    dias = (ultima_contrata - primer_viable).days
+                
+                st.markdown("### ⏱Velocidad de Contratación")
+                
+                if pd.notna(fecha_apertura) and pd.notna(ultima_contrata):
+                    dias = (ultima_contrata - fecha_apertura).days
+                    
                     if dias > 12:
                         st.markdown(f"""
                         <div style='padding:1em; background-color:#FFCDD2; border-left: 6px solid #C62828; border-radius: 5px;'>
-                            <strong>🚨 Lento:</strong> Han pasado <strong>{dias} días</strong> desde los primeros candidatos viables hasta la última contratación.<br>
+                            <strong>🚨 Lento:</strong> Han pasado <strong>{dias} días</strong> desde que se abrió la posición hasta la última contratación.<br>
                             <em>Considera ajustar filtros o acelerar las entrevistas.</em>
                         </div>
                         """, unsafe_allow_html=True)
@@ -149,6 +155,9 @@ if sheet_url:
                             <strong>✅ Bien:</strong> Contratación en <strong>{dias} días</strong>. Flujo de proceso ágil.<br>
                         </div>
                         """, unsafe_allow_html=True)
+                else:
+                    st.info("No hay suficientes datos para calcular la velocidad de contratación.")
+
                 
 
             with col2:
