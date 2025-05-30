@@ -153,20 +153,29 @@ if sheet_url:
 
             with col2:
                 st.markdown("### Tiempos por posición")
+            
                 posiciones_con_datos = []
+            
                 for pos in df_filtrado["Posicion"].unique():
                     df_pos = df_filtrado[df_filtrado["Posicion"] == pos]
-                    fecha_ini = df_pos[df_pos["Recruitment. Candidatos Viables"] > 0]["Fecha"].min()
-                    fecha_fin = df_pos[df_pos["Candidatos contratados"] > 0]["Fecha"].max()
-                    if pd.notna(fecha_ini) and pd.notna(fecha_fin):
-                        dias = (fecha_fin - fecha_ini).days
-                        posiciones_con_datos.append((pos, dias))
+                    
+                    # Fecha de apertura: primer día que aparece la posición
+                    fecha_apertura = df_pos["Fecha"].min()
+                    
+                    # Fecha de contratación: primera vez que hubo contratados
+                    fecha_contratado = df_pos[df_pos["Candidatos contratados"] > 0]["Fecha"].min()
+                    
+                    if pd.notna(fecha_apertura) and pd.notna(fecha_contratado):
+                        dias = (fecha_contratado - fecha_apertura).days
+                        posiciones_con_datos.append((pos, fecha_apertura.date(), dias))
+                
                 if posiciones_con_datos:
-                    heatmap_df = pd.DataFrame(posiciones_con_datos, columns=["Posición", "Días transcurridos"])
+                    heatmap_df = pd.DataFrame(posiciones_con_datos, columns=["Posición", "Fecha de apertura", "Días transcurridos"])
                     styled_df = heatmap_df.style.applymap(color_semaforo, subset=["Días transcurridos"])
                     st.dataframe(styled_df, use_container_width=True)
                 else:
                     st.info("No hay suficientes datos para calcular los tiempos por posición.")
+
 
 
             col3, col4 = st.columns([1, 2])
