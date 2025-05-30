@@ -225,18 +225,24 @@ if sheet_url:
                 resumen_completo = pd.merge(resumen, posiciones_por_reclutador, on="Nombre reclutador")
             
                 if not resumen_completo.empty:
-                    fig, ax = plt.subplots(figsize=(6, 2))
-                    colores = [color_por_carga(x) for x in resumen_completo["Posiciones abiertas"]]
-                    ax.bar(resumen_completo["Nombre reclutador"], resumen_completo["Posiciones abiertas"], color=colores)
-                    ax.set_title("Carga laboral")
-                    ax.set_ylabel("Abiertas")
-                    plt.xticks(rotation=45)
-                    st.pyplot(fig)
+                    # Creamos las dos columnas
+                    col_grafico, col_tabla = st.columns(2)
             
-                    st.markdown("### Detalle de posiciones abiertas por reclutador")
-                    st.dataframe(resumen_completo, use_container_width=True)
+                    with col_grafico:
+                        fig, ax = plt.subplots(figsize=(6, 2))
+                        colores = [color_por_carga(x) for x in resumen_completo["Posiciones abiertas"]]
+                        ax.bar(resumen_completo["Nombre reclutador"], resumen_completo["Posiciones abiertas"], color=colores)
+                        ax.set_title("Carga laboral")
+                        ax.set_ylabel("Abiertas")
+                        plt.xticks(rotation=45)
+                        st.pyplot(fig)
+            
+                    with col_tabla:
+                        st.markdown("### Detalle de posiciones abiertas por reclutador")
+                        st.dataframe(resumen_completo, use_container_width=True)
                 else:
                     st.info("No hay posiciones abiertas actualmente.")
+
  
 
         elif pagina == "Evaluación y Conversión":
