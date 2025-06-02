@@ -163,38 +163,26 @@ if sheet_url:
 
                 posiciones_con_datos = []
                 
+                # Tomamos la fecha actual normalizada (sin hora)
+                hoy = pd.Timestamp.today().normalize()
+                
                 for pos in df_filtrado["Posicion"].unique():
                     df_pos = df_filtrado[df_filtrado["Posicion"] == pos]
                 
                     # Fecha de apertura: primer día que aparece la posición
                     fecha_apertura = df_pos["Fecha"].min()
                 
-                    # Fecha de contratación: primera vez que hubo contratados
-                    fecha_contratado = df_pos[df_pos["Candidatos contratados"] > 0]["Fecha"].min()
-                
-                    if pd.isna(fecha_apertura) and pd.isna(fecha_contratado):
-                        continue  # ni siquiera agregamos si no hay nada
-                    elif pd.isna(fecha_contratado):
-                        dias = None  # si no hay contratados, lo dejamos vacío
-                    else:
-                        dias = (fecha_contratado - fecha_apertura).days
-                
-                    posiciones_con_datos.append((pos, fecha_apertura.date(), dias))
+                    if pd.notna(fecha_apertura):
+                        dias = (hoy - fecha_apertura).days
+                        posiciones_con_datos.append((pos, fecha_apertura.date(), dias))
                 
                 if posiciones_con_datos:
                     heatmap_df = pd.DataFrame(posiciones_con_datos, columns=["Posición", "Fecha de apertura", "Días transcurridos"])
-                    
-                    # Formateamos la tabla
-                    def color_personalizado(val):
-                        if pd.isna(val):
-                            return ''
-                        else:
-                            return color_semaforo(val)
-                
-                    styled_df = heatmap_df.style.applymap(color_personalizado, subset=["Días transcurridos"])
+                    styled_df = heatmap_df.style.applymap(color_semaforo, subset=["Días transcurridos"])
                     st.dataframe(styled_df, use_container_width=True)
                 else:
-                    st.info("No hay suficientes datos para calcular los tiempos por posición.")
+                    st.info("No hay posiciones con fechas de apertura registradas.")
+
 
 
             col3, col4 = st.columns([1, 2])
