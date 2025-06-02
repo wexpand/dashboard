@@ -102,16 +102,12 @@ if sheet_url:
 
         if periodo == "Semana":
             fecha_inicio = fecha_max - pd.Timedelta(days=7)
-            multiplicador = 7
         elif periodo == "Mes":
             fecha_inicio = fecha_max - pd.DateOffset(months=1)
-            multiplicador = 30
         elif periodo == "3 Meses":
             fecha_inicio = fecha_max - pd.DateOffset(months=3)
-            multiplicador = 90
         else:
             fecha_inicio = fecha_max - pd.DateOffset(years=1)
-            multiplicador = 365
 
 
         df_filtrado = filtrar_datos(df, fecha_inicio, fecha_max, posicion_sel)
@@ -137,8 +133,14 @@ if sheet_url:
                 ultima_contrata = df_filtrado[df_filtrado["Candidatos contratados"] > 0]["Fecha"].max()
                 
                 st.markdown("### Velocidad de contratación")
-                
-                if pd.notna(fecha_apertura) and pd.notna(ultima_contrata):
+
+                if pd.isna(fecha_apertura) and pd.isna(ultima_contrata):
+                    st.info("No hay datos de posiciones abiertas ni contrataciones en el período seleccionado.")
+                elif pd.isna(fecha_apertura):
+                    st.info("No hay datos de posiciones abiertas en el período seleccionado.")
+                elif pd.isna(ultima_contrata):
+                    st.info("No hay contrataciones registradas en el período seleccionado.")
+                else:
                     dias = (ultima_contrata - fecha_apertura).days
                     
                     if dias > 12:
@@ -154,36 +156,45 @@ if sheet_url:
                             <strong>✅ Bien:</strong> Contratación en <strong>{dias} días</strong>. Flujo de proceso ágil.<br>
                         </div>
                         """, unsafe_allow_html=True)
-                else:
-                    st.info("No hay suficientes datos para calcular la velocidad de contratación.")
-
                 
 
             with col2:
                 st.markdown("### Tiempos por posición")
-            
+
                 posiciones_con_datos = []
-            
+                
                 for pos in df_filtrado["Posicion"].unique():
                     df_pos = df_filtrado[df_filtrado["Posicion"] == pos]
-                    
+                
                     # Fecha de apertura: primer día que aparece la posición
                     fecha_apertura = df_pos["Fecha"].min()
-                    
+                
                     # Fecha de contratación: primera vez que hubo contratados
                     fecha_contratado = df_pos[df_pos["Candidatos contratados"] > 0]["Fecha"].min()
-                    
-                    if pd.notna(fecha_apertura) and pd.notna(fecha_contratado):
+                
+                    if pd.isna(fecha_apertura) and pd.isna(fecha_contratado):
+                        continue  # ni siquiera agregamos si no hay nada
+                    elif pd.isna(fecha_contratado):
+                        dias = None  # si no hay contratados, lo dejamos vacío
+                    else:
                         dias = (fecha_contratado - fecha_apertura).days
-                        posiciones_con_datos.append((pos, fecha_apertura.date(), dias))
+                
+                    posiciones_con_datos.append((pos, fecha_apertura.date(), dias))
                 
                 if posiciones_con_datos:
                     heatmap_df = pd.DataFrame(posiciones_con_datos, columns=["Posición", "Fecha de apertura", "Días transcurridos"])
-                    styled_df = heatmap_df.style.applymap(color_semaforo, subset=["Días transcurridos"])
+                    
+                    # Formateamos la tabla
+                    def color_personalizado(val):
+                        if pd.isna(val):
+                            return ''
+                        else:
+                            return color_semaforo(val)
+                
+                    styled_df = heatmap_df.style.applymap(color_personalizado, subset=["Días transcurridos"])
                     st.dataframe(styled_df, use_container_width=True)
                 else:
                     st.info("No hay suficientes datos para calcular los tiempos por posición.")
-
 
 
             col3, col4 = st.columns([1, 2])
