@@ -128,32 +128,28 @@ if sheet_url:
             with col1:
                 # Fecha de apertura: primer registro en el dataset filtrado
                 fecha_apertura = df_filtrado["Fecha"].min()
-                
-                # Fecha de contratación: última contratación registrada
-                ultima_contrata = df_filtrado[df_filtrado["Candidatos contratados"] > 0]["Fecha"].max()
-                
+            
+                # Fecha de referencia actual
+                hoy = pd.Timestamp.today().normalize()
+            
                 st.markdown("### Velocidad de contratación")
-
-                if pd.isna(fecha_apertura) and pd.isna(ultima_contrata):
-                    st.info("No hay datos de posiciones abiertas ni contrataciones en el período seleccionado.")
-                elif pd.isna(fecha_apertura):
-                    st.info("No hay datos de posiciones abiertas en el período seleccionado.")
-                elif pd.isna(ultima_contrata):
-                    st.info("No hay contrataciones registradas en el período seleccionado.")
+            
+                if pd.isna(fecha_apertura):
+                    st.info("No hay posiciones abiertas registradas en el período seleccionado.")
                 else:
-                    dias = (ultima_contrata - fecha_apertura).days
-                    
+                    dias = (hoy - fecha_apertura).days
+            
                     if dias > 12:
                         st.markdown(f"""
                         <div style='padding:1em; background-color:#FFCDD2; border-left: 6px solid #C62828; border-radius: 5px;'>
-                            <strong>🚨 Lento:</strong> Han pasado <strong>{dias} días</strong> desde que se abrió la posición hasta la última contratación.<br>
-                            <em>Considera ajustar filtros o acelerar las entrevistas.</em>
+                            <strong>🚨 Lento:</strong> Han pasado <strong>{dias} días</strong> desde que se abrió la primera posición hasta hoy.<br>
+                            <em>Considera revisar el flujo de proceso o impulsar entrevistas.</em>
                         </div>
                         """, unsafe_allow_html=True)
                     else:
                         st.markdown(f"""
                         <div style='padding:1em; background-color:#C8E6C9; border-left: 6px solid #2E7D32; border-radius: 5px;'>
-                            <strong>✅ Bien:</strong> Contratación en <strong>{dias} días</strong>. Flujo de proceso ágil.<br>
+                            <strong>✅ Bien:</strong> Se llevan <strong>{dias} días</strong> desde la apertura. Flujo de proceso ágil.<br>
                         </div>
                         """, unsafe_allow_html=True)
                 
