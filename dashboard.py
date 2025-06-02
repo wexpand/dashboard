@@ -157,7 +157,14 @@ if sheet_url:
                 # Cálculo de aging de posiciones abiertas
                 hoy = pd.Timestamp.today().normalize()
                 
+                # Agrupamos por posición y tomamos el registro más reciente
+                ultimos = df.loc[df.groupby("Posicion")["Fecha"].idxmax()]
+                
+                # Filtrar posiciones abiertas
+                abiertas = ultimos[ultimos["¿Posicion abierta?"] != "no"]
+                
                 # Creamos columna de días abiertos por posición
+                abiertas = abiertas.copy()
                 abiertas["Días_abierta"] = (hoy - abiertas["Fecha"]).dt.days
                 
                 # Posiciones que llevan más de 30 días abiertas
