@@ -19,8 +19,8 @@ def cargar_datos_desde_sheets(sheet_url):
 def filtrar_datos(df, fecha_inicio, fecha_fin, posicion):
     df = df.dropna(subset=["Fecha"])
     df["Fecha"] = pd.to_datetime(df["Fecha"], dayfirst=True, errors="coerce")
-    fecha_inicio = pd.to_datetime(fecha_inicio, errors="coerce")
-    fecha_fin = pd.to_datetime(fecha_fin, errors="coerce")
+    fecha_inicio = pd.to_datetime(fecha_inicio, dayfirst=True, errors="coerce")
+    fecha_fin = pd.to_datetime(fecha_fin, dayfirst=True, errors="coerce")
 
     if pd.isna(fecha_inicio) or pd.isna(fecha_fin):
         st.error("Las fechas seleccionadas no son válidas.")
@@ -73,7 +73,6 @@ if sheet_url:
     try:
         df = cargar_datos_desde_sheets(sheet_url)
         df.columns = df.columns.str.strip()
-        df = df.drop(columns=[col for col in ['Recruitment. CA%', 'Recruitment. ACV%', 'Recruitment. V%'] if col in df.columns], errors='ignore')
         df.replace(["<5", "N/A", "—", "-", ""], np.nan, inplace=True)
         df = df.fillna(0)
 
@@ -92,7 +91,7 @@ if sheet_url:
         cols_to_numeric = [col for col in cols_to_numeric if col in df.columns]
         df[cols_to_numeric] = df[cols_to_numeric].apply(pd.to_numeric, errors='coerce').fillna(0)
 
-        df["Fecha"] = pd.to_datetime(df["Fecha"], errors='coerce')
+        df["Fecha"] = pd.to_datetime(df["Fecha"], dayfirst=True, errors="coerce")
         df = df[df["Fecha"].notna()]
         fecha_min = df["Fecha"].min()
         fecha_max = df["Fecha"].max()
@@ -137,7 +136,7 @@ if sheet_url:
                 # Fecha de contratación: última contratación registrada
                 ultima_contrata = df_filtrado[df_filtrado["Candidatos contratados"] > 0]["Fecha"].max()
                 
-                st.markdown("### ⏱Velocidad de Contratación")
+                st.markdown("### Velocidad de contratación")
                 
                 if pd.notna(fecha_apertura) and pd.notna(ultima_contrata):
                     dias = (ultima_contrata - fecha_apertura).days
