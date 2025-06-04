@@ -329,6 +329,7 @@ if sheet_url:
             
             ternas, alertas = st.columns([2,1])
             with ternas:
+                st.markdown("### Envío de ternas por posición")
                 # Primero preparamos los datos planos para graficar
                 ternas_explotadas = []
 
@@ -359,7 +360,7 @@ if sheet_url:
 
                 plt.xlabel("Días hábiles desde apertura")
                 plt.ylabel("Posición")
-                plt.title("Envío de ternas por posición")
+                #plt.title("Envío de ternas por posición")
                 plt.grid(axis='x', linestyle=':', alpha=0.4)
                 #plt.legend(title="Posiciones", bbox_to_anchor=(1.05, 1), loc='upper left')
                 st.pyplot(plt)
