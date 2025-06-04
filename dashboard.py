@@ -147,7 +147,14 @@ def evaluar_alertas_sourcing(df):
     
     # Calculamos días hábiles desde la apertura hasta la fecha actual
     hoy = pd.Timestamp.today().normalize()
-    df["Dias_habiles"] = df.apply(lambda row: np.busday_count(row["Fecha_apertura"].date(), hoy.date()), axis=1)
+    def calcular_dias_habiles(row):
+    if pd.notna(row["Fecha_apertura"]) and pd.notna(row["Fecha"]):
+        return np.busday_count(row["Fecha_apertura"].date(), row["Fecha"].date())
+    else:
+        return np.nan
+
+    df_ternas["Dias_habiles_a_terna"] = df_ternas.apply(calcular_dias_habiles, axis=1)
+
     
     # Agrupamos por posición para calcular acumulados
     acumulados = df.groupby("Posicion").agg({
