@@ -287,6 +287,11 @@ if sheet_url:
             "Fecha", "Dias_habiles_a_terna", "Terna"
         ]]
 
+        resumen_tabla = resumen_ternas[[
+            "Posicion", "Nombre reclutador",
+            "Total ternas enviadas", "Total candidatos enviados"
+        ]]
+
         #Organizacipon visual de la primera página 
         if pagina == "Resumen General":
             
@@ -322,7 +327,7 @@ if sheet_url:
             
             with pos_reclutador:
                 st.markdown("### Detalle de posiciones abiertas")
-                st.dataframe(resumen_final, use_container_width=True, height=500)
+                st.dataframe(resumen_tabla, use_container_width=True, height=500)
 
             # Evaluamos sourcing health
             alertas_sourcing = evaluar_alertas_sourcing(df)
