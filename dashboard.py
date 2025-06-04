@@ -137,6 +137,23 @@ def color_por_carga(val):
     else:
         return "#66BB6A"
 
+# Función de color por tipo de alerta
+def color_alerta(val):
+    val = str(val)
+    if "Estado crítico" in val:
+        color = '#ad2828'  # Rojo
+    elif "LinkedIn" in val:
+        color = '#ad2881'  # Rosa
+    elif "WhatsApp" in val:
+        color = '#FFA726'  # Naranja
+    elif "Instantly" in val:
+        color = '#e8d82a'  # Amarillo
+    elif "OK" in val:
+        color = '#71ad28'  # Verde
+    else:
+        color = '#FFFFFF'  # Blanco por default (si algo falla)
+    return f'background-color: {color}; font-weight: bold;'
+
 # Creamos la función para evaluar las alertas de sourcing
 def evaluar_alertas_sourcing(df):
     
@@ -372,7 +389,8 @@ if sheet_url:
             with alertas:
                 # Mostramos en el dashboard
                 st.markdown("### Alertas del día")
-                st.dataframe(alertas_sourcing, use_container_width=True, height=500)
+                styled_alertas = alertas_sourcing.style.applymap(color_alerta, subset=["Alerta sourcing"])
+                st.dataframe(styled_alertas, use_container_width=True, height=500)
 
                 
         #Segunda página
