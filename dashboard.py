@@ -6,6 +6,7 @@ from datetime import datetime
 import requests
 from io import StringIO
 from pandas.tseries.offsets import BDay
+import matplotlib.dates as mdates
 
 st.set_page_config(layout="wide")
 
@@ -136,26 +137,29 @@ def color_por_carga(val):
     else:
         return "#66BB6A"
 
+# Creamos la función para evaluar las alertas de sourcing
 def evaluar_alertas_sourcing(df):
+    
+    # Primero calculamos fecha de apertura por posición
+    fechas_apertura = df.groupby("Posicion")["Fecha"].min().reset_index().rename(columns={"Fecha": "Fecha_apertura"})
+    
+    # Unimos la fecha de apertura al dataframe principal
+    df = df.merge(fechas_apertura, on="Posicion", how="left")
     
     # Calculamos días hábiles desde la apertura hasta la fecha actual
     hoy = pd.Timestamp.today().normalize()
+    df["Dias_habiles"] = df.apply(lambda row: np.busday_count(row["Fecha_apertura"].date(), hoy.date()), axis=1)
     
-    df["Dias_habiles"] = df.apply(
-        lambda row: np.busday_count(row["Fecha_apertura"].date(), hoy.date()) if pd.notna(row["Fecha_apertura"]) else np.nan,
-        axis=1
-    )
-
     # Agrupamos por posición para calcular acumulados
     acumulados = df.groupby("Posicion").agg({
         "Fecha_apertura": "first",
         "Nombre reclutador": "first",
         "Dias_habiles": "first",
-        "Recruitment. Candidatos Indeed": "first",
-        "Recruitment. Candidatos nuevos": "sum"
+        "Recruitment. Candidatos Indeed": "first",  # sólo usamos el valor inicial
+        "Recruitment. Candidatos nuevos": "sum"     # acumulamos los nuevos
     }).reset_index()
 
-    # Lógica de alertas
+    # Ahora aplicamos las reglas de negocio
     def determinar_alerta(row):
         dias = row["Dias_habiles"]
         candidatos_indeed = row["Recruitment. Candidatos Indeed"]
@@ -176,8 +180,9 @@ def evaluar_alertas_sourcing(df):
     
     acumulados["Alerta sourcing"] = acumulados.apply(determinar_alerta, axis=1)
 
-    return acumulados
-
+    return acumulados[[
+        "Posicion", "Alerta sourcing"
+    ]]
 
 
 # --- INTERFAZ DE USUARIO ---
@@ -320,16 +325,48 @@ if sheet_url:
                 st.dataframe(resumen_final, use_container_width=True, height=500)
 
             # Evaluamos sourcing health
-            fechas_apertura = df.groupby("Posicion")["Fecha"].min().reset_index().rename(columns={"Fecha": "Fecha_apertura"})
-            df = df.merge(fechas_apertura, on="Posicion", how="left")
-            
-            # Ahora sí llamas:
             alertas_sourcing = evaluar_alertas_sourcing(df)
+            
+            ternas, alertas = st.columns([2,1])
+            with ternas:
+                # Primero preparamos los datos planos para graficar
+                ternas_explotadas = []
 
+                for idx, row in resumen_final.iterrows():
+                    for fecha_ts, dias_habiles, terna in zip(row["Fecha"], row["Dias_habiles_a_terna"], row["Terna"]):
+                        fecha_real = pd.to_datetime(fecha_ts, unit='ms')  # Convertimos timestamp a fecha legible
+                        ternas_explotadas.append({
+                            "Posicion": row["Posicion"],
+                            "Reclutador": row["Nombre reclutador"],
+                            "Fecha": fecha_real,
+                            "Dias_habiles": dias_habiles,
+                            "Terna": terna
+                        })
 
-            # Mostramos en el dashboard
-            st.markdown("### Alertas del día")
-            st.dataframe(alertas_sourcing, use_container_width=True, height=500)
+                ternas_df = pd.DataFrame(ternas_explotadas)
+
+                # Creamos el gráfico
+                plt.figure(figsize=(12, 6))
+                for posicion in ternas_df["Posicion"].unique():
+                    subset = ternas_df[ternas_df["Posicion"] == posicion]
+                    plt.scatter(
+                        subset["Dias_habiles"],
+                        [posicion] * len(subset),
+                        s=subset["Terna"] * 50,  # Tamaño proporcional al número de candidatos
+                        label=posicion,
+                        alpha=0.7
+                    )
+
+                plt.xlabel("Días hábiles desde apertura")
+                plt.ylabel("Posición")
+                plt.title("Envío de ternas por posición")
+                plt.grid(axis='x', linestyle=':', alpha=0.4)
+                plt.legend(title="Posiciones", bbox_to_anchor=(1.05, 1), loc='upper left')
+                st.pyplot(plt)
+            with alertas:
+                # Mostramos en el dashboard
+                st.markdown("### Alertas del día")
+                st.dataframe(alertas_sourcing, use_container_width=True, height=500)
 
                 
         #Segunda página
