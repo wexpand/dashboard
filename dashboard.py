@@ -5,8 +5,91 @@ import numpy as np
 from datetime import datetime
 import requests
 from io import StringIO
+from pandas.tseries.offsets import BDay
 
 st.set_page_config(layout="wide")
+
+# INYECCIÓN GLOBAL DE ESTILO DEL DASHBOARD DE RECLUTAMIENTO
+
+st.markdown("""
+<style>
+
+    /* ----- BACKGROUND GENERAL ----- */
+    .stApp {
+        background-color: #F9F9F9;
+    }
+
+    /* ----- COLOR GENERAL DE TEXTOS ----- */
+    html, body, div, p, label {
+        color: #2C3E50;
+        font-family: 'Segoe UI', 'Roboto', sans-serif;
+        font-weight: 400;
+    }
+
+    /* ----- TITULOS Y HEADERS ----- */
+    h1, h2, h3, h4 {
+        color: #2C3E50 !important;
+        font-weight: 700 !important;
+    }
+
+    /* ----- SIDEBAR ----- */
+    section[data-testid="stSidebar"] {
+        background-color: #ECEFF4;
+        border-right: 1px solid #D0D7DE;
+    }
+
+    /* ----- SELECTBOX ----- */
+    div[data-baseweb="select"] > div {
+        background-color: #F5F9FF !important;
+        border-radius: 8px !important;
+        border: 1px solid #2980B9 !important;
+    }
+    
+    div[data-baseweb="select"] div[class*="Text"] {
+        color: #2C3E50 !important;
+        font-weight: 600 !important;
+    }
+
+    label {
+        color: #2C3E50 !important;
+        font-weight: 700 !important;
+        font-size: 16px !important;
+    }
+
+    /* ----- METRICS (los KPIs) ----- */
+    div[data-testid="metric-container"] {
+        background-color: #E3F2FD;
+        padding: 20px;
+        border-radius: 10px;
+        border: 1px solid #BBDEFB;
+        color: #2C3E50;
+    }
+
+    /* ----- TABLAS ----- */
+    .stDataFrame {
+        background-color: #FFFFFF !important;
+        border-radius: 10px;
+        border: 1px solid #E0E0E0;
+    }
+
+    /* ----- BOTONES ----- */
+    div.stButton > button {
+        background-color: #2980B9;
+        color: white;
+        font-weight: bold;
+        border-radius: 8px;
+        padding: 10px 20px;
+        border: none;
+    }
+
+    div.stButton > button:hover {
+        background-color: #21618C;
+        color: white;
+    }
+
+</style>
+""", unsafe_allow_html=True)
+
 
 # --- FUNCIONES AUXILIARES ---
 def cargar_datos_desde_sheets(sheet_url):
@@ -35,12 +118,14 @@ def filtrar_datos(df, fecha_inicio, fecha_fin, posicion):
     return df
 
 def color_semaforo(val):
-    if val <= 12:
-        color = '#C8E6C9'
-    elif 13 <= val <= 20:
-        color = '#FFF9C4'
+    if val <= 8:
+        color = '#9eeb50'
+    elif 8 <= val <= 12:
+        color = '#ebde50'
+    elif 12 <= val <= 20:
+        color = '#eba050'
     else:
-        color = '#FFCDD2'
+        color = '#eb5050'
     return f'background-color: {color}; text-align: center;'
 
 def color_por_carga(val):
@@ -51,6 +136,54 @@ def color_por_carga(val):
     else:
         return "#66BB6A"
 
+# Creamos la función para evaluar las alertas de sourcing
+def evaluar_alertas_sourcing(df):
+    
+    # Primero calculamos fecha de apertura por posición
+    fechas_apertura = df.groupby("Posicion")["Fecha"].min().reset_index().rename(columns={"Fecha": "Fecha_apertura"})
+    
+    # Unimos la fecha de apertura al dataframe principal
+    df = df.merge(fechas_apertura, on="Posicion", how="left")
+    
+    # Calculamos días hábiles desde la apertura hasta la fecha actual
+    hoy = pd.Timestamp.today().normalize()
+    df["Dias_habiles"] = df.apply(lambda row: np.busday_count(row["Fecha_apertura"].date(), hoy.date()), axis=1)
+    
+    # Agrupamos por posición para calcular acumulados
+    acumulados = df.groupby("Posicion").agg({
+        "Fecha_apertura": "first",
+        "Nombre reclutador": "first",
+        "Dias_habiles": "first",
+        "Recruitment. Candidatos Indeed": "first",  # sólo usamos el valor inicial
+        "Recruitment. Candidatos nuevos": "sum"     # acumulamos los nuevos
+    }).reset_index()
+
+    # Ahora aplicamos las reglas de negocio
+    def determinar_alerta(row):
+        dias = row["Dias_habiles"]
+        candidatos_indeed = row["Recruitment. Candidatos Indeed"]
+        nuevos = row["Recruitment. Candidatos nuevos"]
+        acumulado_total = candidatos_indeed + nuevos
+        
+        if dias >= 1 and candidatos_indeed < 30:
+            return "Es necesario lanzar una campaña en Instantly"
+        elif dias >= 3 and acumulado_total < 50:
+            return "Te recomiendo una campaña por WhatsApp"
+        elif dias >= 4 and acumulado_total < 60:
+            return "Necesitas una campaña de LinkedIn"
+        elif dias >= 5 and acumulado_total < 80:
+            faltan = 80 - acumulado_total
+            return f"Estado crítico: hay actualmente {acumulado_total} candidatos, faltan {faltan}. Iniciar búsqueda directa"
+        else:
+            return "Sin alertas - sourcing OK"
+    
+    acumulados["Alerta sourcing"] = acumulados.apply(determinar_alerta, axis=1)
+
+    return acumulados[[
+        "Posicion", "Nombre reclutador", "Fecha_apertura", 
+        "Dias_habiles", "Recruitment. Candidatos Indeed", 
+        "Recruitment. Candidatos nuevos", "Alerta sourcing"
+    ]]
 
 
 # --- INTERFAZ DE USUARIO ---
@@ -68,10 +201,9 @@ if usar_url_personalizada:
 else:
     sheet_url = default_sheet_url
 
-pagina = st.radio("Selecciona vista", ["Resumen General", "Evaluación y Conversión", "Posiciones cerradas"])
-
 if sheet_url:
     try:
+        #Primera limpieza general y filtrado de datos
         df = cargar_datos_desde_sheets(sheet_url)
         df.columns = df.columns.str.strip()
         df.replace(["<5", "N/A", "—", "-", ""], np.nan, inplace=True)
@@ -91,15 +223,23 @@ if sheet_url:
         ]
         cols_to_numeric = [col for col in cols_to_numeric if col in df.columns]
         df[cols_to_numeric] = df[cols_to_numeric].apply(pd.to_numeric, errors='coerce').fillna(0)
-
         df["Fecha"] = pd.to_datetime(df["Fecha"], dayfirst=True, errors="coerce")
         df = df[df["Fecha"].notna()]
         fecha_min = df["Fecha"].min()
         fecha_max = df["Fecha"].max()
-
         df["Posicion"] = df["Posicion"].astype(str)
-        posicion_sel = st.selectbox("Filtrar por Posición", ["Todas"] + sorted(df["Posicion"].unique()))
-        periodo = st.selectbox("Periodo", ["Semana", "Mes", "3 Meses", "Año"])
+
+        #Filtros para seleccionar páginas y más cosas
+        #pagina = st.radio("Selecciona vista", ["Resumen General", "Evaluación y Conversión", "Posiciones cerradas"])
+
+        #Primera parte del dashboard
+        f_posicion, f_periodo, f_vista = st.columns(3)
+        with f_posicion:
+            posicion_sel = st.selectbox("Filtrar por Posición", ["Todas"] + sorted(df["Posicion"].unique()))
+        with f_periodo:
+            periodo = st.selectbox("Periodo", ["Semana", "Mes", "3 Meses", "Año"])
+        with f_vista:
+            pagina = st.selectbox("Selecciona vista", ["Resumen General", "Evaluación y Conversión", "Posiciones cerradas"])
 
         if periodo == "Semana":
             fecha_inicio = fecha_max - pd.Timedelta(days=7)
@@ -110,157 +250,90 @@ if sheet_url:
         else:
             fecha_inicio = fecha_max - pd.DateOffset(years=1)
 
-
+        #Este df filtrado solo se tiene que usar para los KPIs no para las alertas
         df_filtrado = filtrar_datos(df, fecha_inicio, fecha_max, posicion_sel)
 
+        #Procesos anteriores para agrupar por ternas
+        # Calculamos apertura de cada posición
+        fechas_apertura = df.groupby("Posicion")["Fecha"].min().reset_index().rename(columns={"Fecha": "Fecha_apertura"})
+
+        # Filtramos los registros donde efectivamente hubo envío de terna
+        df_ternas = df[df["Terna"] > 0].copy()
+
+        # Mergeamos para agregar la fecha de apertura a cada envío de terna
+        df_ternas = df_ternas.merge(fechas_apertura, on="Posicion", how="left")
+
+        # Calculamos días hábiles desde apertura a cada envío de terna
+        df_ternas["Dias_habiles_a_terna"] = df_ternas.apply(
+            lambda row: np.busday_count(row["Fecha_apertura"].date(), row["Fecha"].date()), axis=1
+        )
+
+        # Resumimos por posición:
+        resumen_ternas = df_ternas.groupby("Posicion").agg({
+            "Nombre reclutador": "first",
+            "Fecha_apertura": "first",
+            "Fecha": list,
+            "Dias_habiles_a_terna": list,
+            "Terna": list
+        }).reset_index()
+
+        # Agregamos total de ternas enviadas y total de candidatos enviados
+        resumen_ternas["Total ternas enviadas"] = resumen_ternas["Fecha"].apply(len)
+        resumen_ternas["Total candidatos enviados"] = resumen_ternas["Terna"].apply(sum)
+
+        # Reordenamos columnas para visualización
+        resumen_final = resumen_ternas[[
+            "Posicion", "Nombre reclutador", "Fecha_apertura", 
+            "Total ternas enviadas", "Total candidatos enviados", 
+            "Fecha", "Dias_habiles_a_terna", "Terna"
+        ]]
+
+        #Organizacipon visual de la primera página 
         if pagina == "Resumen General":
             
-            st.markdown("### Flujo diario de candidatos")
-            by_date = df_filtrado.groupby("Fecha")[["Recruitment. Candidatos nuevos", "Recruitment. Candidatos Viables", "Candidatos contratados"]].sum()
-            if not by_date.empty:
-                fig6, ax6 = plt.subplots(figsize=(12, 3))
-                by_date.plot(ax=ax6)
-                ax6.set_title("Flujo diario de candidatos")
-                ax6.set_xlabel("Fecha")
-                ax6.set_ylabel("Cantidad")
-                st.pyplot(fig6)
-
-            col1, col2 = st.columns([1, 2])
-            with col1:
-                # Fecha de apertura: primer registro en el dataset filtrado
-                fecha_apertura = df_filtrado["Fecha"].min()
+            # Normalizamos los campos antes de procesar
+            df["¿Posicion abierta?"] = df["¿Posicion abierta?"].astype(str).str.lower().str.strip()
+            df["Nombre reclutador"] = df["Nombre reclutador"].astype(str).str.strip()
+            df["Posicion"] = df["Posicion"].astype(str).str.strip()
             
-                # Fecha de referencia actual
-                hoy = pd.Timestamp.today().normalize()
+            # Eliminar registros sin fecha válida
+            df = df.dropna(subset=["Fecha"])
             
-                st.markdown("### Velocidad de contratación")
+            # Agrupamos por posición y tomamos el registro más reciente
+            ultimos = df.loc[df.groupby("Posicion")["Fecha"].idxmax()]
             
-                if pd.isna(fecha_apertura):
-                    st.info("No hay posiciones abiertas registradas en el período seleccionado.")
-                else:
-                    dias = (hoy - fecha_apertura).days
+            # Filtrar posiciones abiertas
+            abiertas = ultimos[ultimos["¿Posicion abierta?"] != "no"]
             
-                    if dias > 12:
-                        st.markdown(f"""
-                        <div style='padding:1em; background-color:#FFCDD2; border-left: 6px solid #C62828; border-radius: 5px;'>
-                            <strong>🚨 Lento:</strong> Han pasado <strong>{dias} días</strong> desde que se abrió la primera posición hasta hoy.<br>
-                            <em>Considera revisar el flujo de proceso o impulsar entrevistas.</em>
-                        </div>
-                        """, unsafe_allow_html=True)
-                    else:
-                        st.markdown(f"""
-                        <div style='padding:1em; background-color:#C8E6C9; border-left: 6px solid #2E7D32; border-radius: 5px;'>
-                            <strong>✅ Bien:</strong> Se llevan <strong>{dias} días</strong> desde la apertura. Flujo de proceso ágil.<br>
-                        </div>
-                        """, unsafe_allow_html=True)
+            # Agrupamos correctamente por reclutador
+            resumen = abiertas.groupby("Nombre reclutador").size().reset_index(name="Posiciones abiertas")
+            posiciones_por_reclutador = abiertas.groupby("Nombre reclutador")["Posicion"].apply(list).reset_index(name="Lista de posiciones")
+            resumen_completo = pd.merge(resumen, posiciones_por_reclutador, on="Nombre reclutador")
 
-                # Cálculo de aging de posiciones abiertas
-                hoy = pd.Timestamp.today().normalize()
-                
-                # Agrupamos por posición y tomamos el registro más reciente
-                ultimos = df.loc[df.groupby("Posicion")["Fecha"].idxmax()]
-                
-                # Filtrar posiciones abiertas
-                abiertas = ultimos[ultimos["¿Posicion abierta?"] != "no"]
-                
-                # Creamos columna de días abiertos por posición
-                abiertas = abiertas.copy()
-                abiertas["Días_abierta"] = (hoy - abiertas["Fecha"]).dt.days
-                
-                # Posiciones que llevan más de 30 días abiertas
-                alerta_aging = abiertas[abiertas["Días_abierta"] > 30]
-                
-                if not alerta_aging.empty:
-                    st.warning("🚨 Hay posiciones que llevan más de 30 días abiertas:")
-                    st.dataframe(alerta_aging[["Posicion", "Nombre reclutador", "Días_abierta"]], use_container_width=True)
-
-                
-
-            with col2:
-                st.markdown("### Tiempos por posición")
-
-                posiciones_con_datos = []
-                
-                # Tomamos la fecha actual normalizada (sin hora)
-                hoy = pd.Timestamp.today().normalize()
-                
-                for pos in df_filtrado["Posicion"].unique():
-                    df_pos = df_filtrado[df_filtrado["Posicion"] == pos]
-                
-                    # Fecha de apertura: primer día que aparece la posición
-                    fecha_apertura = df_pos["Fecha"].min()
-                
-                    if pd.notna(fecha_apertura):
-                        dias = (hoy - fecha_apertura).days
-                        posiciones_con_datos.append((pos, fecha_apertura.date(), dias))
-                
-                if posiciones_con_datos:
-                    heatmap_df = pd.DataFrame(posiciones_con_datos, columns=["Posición", "Fecha de apertura", "Días transcurridos"])
-                    styled_df = heatmap_df.style.applymap(color_semaforo, subset=["Días transcurridos"])
-                    st.dataframe(styled_df, use_container_width=True)
-                else:
-                    st.info("No hay posiciones con fechas de apertura registradas.")
-
-
-
-            col3, col4 = st.columns([1, 2])
-            with col3:
-                st.markdown("### Flujo de Reclutamiento")
-                funnel_data = {
-                    "Indeed": df_filtrado.get("Recruitment. Candidatos Indeed", pd.Series([0])).sum(),
-                    "RCRM": df_filtrado.get("Recruitment. Candidatos R.CRM", pd.Series([0])).sum(),
-                    "Viables": df_filtrado.get("Recruitment. Candidatos Viables", pd.Series([0])).sum(),
-                    "Contratados": df_filtrado.get("Candidatos contratados", pd.Series([0])).sum()
-                }
-                fig2, ax2 = plt.subplots(figsize=(12, 10))
-                ax2.barh(list(funnel_data.keys())[::-1], list(funnel_data.values())[::-1], color="#4C72B0")
-                ax2.set_title("Embudo de Reclutamiento")
-                ax2.set_xlabel("Cantidad de Candidatos")
-                st.pyplot(fig2)
-
-            with col4:
+            carga_trabajo, pos_reclutador = st.columns([1,2])
+            with carga_trabajo:
                 st.markdown("### Carga laboral por reclutador")
+                fig, ax = plt.subplots(figsize=(5, 3))
+                colores = [color_por_carga(x) for x in resumen_completo["Posiciones abiertas"]]
+                ax.bar(resumen_completo["Nombre reclutador"], resumen_completo["Posiciones abiertas"], color=colores)
+                ax.set_ylabel("Posiciones abiertas")
+                ax.set_xlabel("Reclutador")
+                plt.xticks(rotation=45)
+                st.pyplot(fig)
             
-                # Normalizamos los campos antes de procesar
-                df["¿Posicion abierta?"] = df["¿Posicion abierta?"].astype(str).str.lower().str.strip()
-                df["Nombre reclutador"] = df["Nombre reclutador"].astype(str).str.strip()
-                df["Posicion"] = df["Posicion"].astype(str).str.strip()
-            
-                # Eliminar registros sin fecha válida
-                df = df.dropna(subset=["Fecha"])
-            
-                # Agrupamos por posición y tomamos el registro más reciente
-                ultimos = df.loc[df.groupby("Posicion")["Fecha"].idxmax()]
-            
-                # Filtrar posiciones abiertas
-                abiertas = ultimos[ultimos["¿Posicion abierta?"] != "no"]
-            
-                # Agrupamos correctamente por reclutador
-                resumen = abiertas.groupby("Nombre reclutador").size().reset_index(name="Posiciones abiertas")
-                posiciones_por_reclutador = abiertas.groupby("Nombre reclutador")["Posicion"].apply(list).reset_index(name="Lista de posiciones")
-                resumen_completo = pd.merge(resumen, posiciones_por_reclutador, on="Nombre reclutador")
-            
-                if not resumen_completo.empty:
-                    # Creamos las dos columnas
-                    col_grafico, col_tabla = st.columns(2)
-            
-                    with col_grafico:
-                        fig, ax = plt.subplots(figsize=(6, 2))
-                        colores = [color_por_carga(x) for x in resumen_completo["Posiciones abiertas"]]
-                        ax.bar(resumen_completo["Nombre reclutador"], resumen_completo["Posiciones abiertas"], color=colores)
-                        ax.set_title("Carga laboral")
-                        ax.set_ylabel("Abiertas")
-                        plt.xticks(rotation=45)
-                        st.pyplot(fig)
-            
-                    with col_tabla:
-                        st.markdown("### Detalle de posiciones abiertas por reclutador")
-                        st.dataframe(resumen_completo, use_container_width=True)
-                else:
-                    st.info("No hay posiciones abiertas actualmente.")
+            with pos_reclutador:
+                st.markdown("### Detalle de posiciones abiertas")
+                st.dataframe(resumen_final, use_container_width=True, height=500)
 
- 
+            # Evaluamos sourcing health
+            alertas_sourcing = evaluar_alertas_sourcing(df)
 
+            # Mostramos en el dashboard
+            st.markdown("### Alertas del día")
+            st.dataframe(alertas_sourcing, use_container_width=True, height=500)
+
+                
+        #Segunda página
         elif pagina == "Evaluación y Conversión":
             st.markdown("### Etapa 1: Captación y evaluación por reclutador")
 
