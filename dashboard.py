@@ -136,36 +136,26 @@ def color_por_carga(val):
     else:
         return "#66BB6A"
 
-# Creamos la función para evaluar las alertas de sourcing
 def evaluar_alertas_sourcing(df):
-    
-    # Primero calculamos fecha de apertura por posición
-    fechas_apertura = df.groupby("Posicion")["Fecha"].min().reset_index().rename(columns={"Fecha": "Fecha_apertura"})
-    
-    # Unimos la fecha de apertura al dataframe principal
-    df = df.merge(fechas_apertura, on="Posicion", how="left")
     
     # Calculamos días hábiles desde la apertura hasta la fecha actual
     hoy = pd.Timestamp.today().normalize()
-    def calcular_dias_habiles(row):
-        if pd.notna(row["Fecha_apertura"]) and pd.notna(row["Fecha"]):
-            return np.busday_count(row["Fecha_apertura"].date(), row["Fecha"].date())
-        else:
-            return np.nan
-
-    df_ternas["Dias_habiles_a_terna"] = df_ternas.apply(calcular_dias_habiles, axis=1)
-
     
+    df["Dias_habiles"] = df.apply(
+        lambda row: np.busday_count(row["Fecha_apertura"].date(), hoy.date()) if pd.notna(row["Fecha_apertura"]) else np.nan,
+        axis=1
+    )
+
     # Agrupamos por posición para calcular acumulados
     acumulados = df.groupby("Posicion").agg({
         "Fecha_apertura": "first",
         "Nombre reclutador": "first",
         "Dias_habiles": "first",
-        "Recruitment. Candidatos Indeed": "first",  # sólo usamos el valor inicial
-        "Recruitment. Candidatos nuevos": "sum"     # acumulamos los nuevos
+        "Recruitment. Candidatos Indeed": "first",
+        "Recruitment. Candidatos nuevos": "sum"
     }).reset_index()
 
-    # Ahora aplicamos las reglas de negocio
+    # Lógica de alertas
     def determinar_alerta(row):
         dias = row["Dias_habiles"]
         candidatos_indeed = row["Recruitment. Candidatos Indeed"]
@@ -186,11 +176,8 @@ def evaluar_alertas_sourcing(df):
     
     acumulados["Alerta sourcing"] = acumulados.apply(determinar_alerta, axis=1)
 
-    return acumulados[[
-        "Posicion", "Nombre reclutador", "Fecha_apertura", 
-        "Dias_habiles", "Recruitment. Candidatos Indeed", 
-        "Recruitment. Candidatos nuevos", "Alerta sourcing"
-    ]]
+    return acumulados
+
 
 
 # --- INTERFAZ DE USUARIO ---
@@ -333,7 +320,12 @@ if sheet_url:
                 st.dataframe(resumen_final, use_container_width=True, height=500)
 
             # Evaluamos sourcing health
+            fechas_apertura = df.groupby("Posicion")["Fecha"].min().reset_index().rename(columns={"Fecha": "Fecha_apertura"})
+            df = df.merge(fechas_apertura, on="Posicion", how="left")
+            
+            # Ahora sí llamas:
             alertas_sourcing = evaluar_alertas_sourcing(df)
+
 
             # Mostramos en el dashboard
             st.markdown("### Alertas del día")
