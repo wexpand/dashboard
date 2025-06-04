@@ -361,7 +361,7 @@ if sheet_url:
                 plt.ylabel("Posición")
                 plt.title("Envío de ternas por posición")
                 plt.grid(axis='x', linestyle=':', alpha=0.4)
-                plt.legend(title="Posiciones", bbox_to_anchor=(1.05, 1), loc='upper left')
+                #plt.legend(title="Posiciones", bbox_to_anchor=(1.05, 1), loc='upper left')
                 st.pyplot(plt)
             with alertas:
                 # Mostramos en el dashboard
