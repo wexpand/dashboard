@@ -214,13 +214,14 @@ st.title("Dashboard de Reclutamiento")
 default_sheet_url = "https://docs.google.com/spreadsheets/d/18uRbFCZ3btmnLxsfePyJ0_JURaxARa0hZl1ZbM9EQIY/export?format=csv&gid=1933021086"
 
 # Mostrar opción para personalizar el link
-st.sidebar.markdown("### Configuración")
-usar_url_personalizada = st.sidebar.checkbox("Usar Google Sheet personalizado")
+#st.sidebar.markdown("### Configuración")
+#usar_url_personalizada = st.sidebar.checkbox("Usar Google Sheet personalizado")
 
-if usar_url_personalizada:
-    sheet_url = st.sidebar.text_input("Pega aquí el link CSV de Google Sheets:")
-else:
-    sheet_url = default_sheet_url
+#if usar_url_personalizada:
+#    sheet_url = st.sidebar.text_input("Pega aquí el link CSV de Google Sheets:")
+#else:
+
+sheet_url = default_sheet_url
 
 if sheet_url:
     try:
