@@ -141,15 +141,15 @@ def color_por_carga(val):
 def color_alerta(val):
     val = str(val)
     if "Estado crítico" in val:
-        color = '#ad2828'  # Rojo
+        color = '#e84646'  # Rojo
     elif "LinkedIn" in val:
-        color = '#ad2881'  # Rosa
+        color = '#ed80cc'  # Rosa
     elif "WhatsApp" in val:
-        color = '#FFA726'  # Naranja
+        color = '#ed8f80'  # Naranja
     elif "Instantly" in val:
-        color = '#e8d82a'  # Amarillo
+        color = '#ede880'  # Amarillo
     elif "OK" in val:
-        color = '#71ad28'  # Verde
+        color = '#d7ed80'  # Verde
     else:
         color = '#FFFFFF'  # Blanco por default (si algo falla)
     return f'background-color: {color}; font-weight: bold;'
@@ -305,9 +305,16 @@ if sheet_url:
         ]]
 
         resumen_tabla = resumen_ternas[[
-            "Posicion", "Nombre reclutador",
+            "Posicion", "Nombre reclutador", "Fecha_apertura",
             "Total ternas enviadas", "Total candidatos enviados"
         ]]
+        # Merge para incluir días hábiles a la tabla de detalle
+        resumen_tabla = resumen_tabla.merge(
+            fechas_apertura[["Posicion", "Dias_habiles_abierta"]],
+            on="Posicion",
+            how="left"
+        )
+
 
         #Organizacipon visual de la primera página 
         if pagina == "Resumen General":
@@ -332,6 +339,23 @@ if sheet_url:
             resumen_completo = pd.merge(resumen, posiciones_por_reclutador, on="Nombre reclutador")
 
             carga_trabajo, pos_reclutador = st.columns([1,2])
+
+            # Primero preparamos los datos planos para graficar
+            ternas_explotadas = []
+
+            for idx, row in resumen_final.iterrows():
+                for fecha_ts, dias_habiles, terna in zip(row["Fecha"], row["Dias_habiles_a_terna"], row["Terna"]):
+                    fecha_real = pd.to_datetime(fecha_ts, unit='ms')  # Convertimos timestamp a fecha legible
+                    ternas_explotadas.append({
+                        "Posicion": row["Posicion"],
+                        "Reclutador": row["Nombre reclutador"],
+                        "Fecha": fecha_real,
+                        "Dias_habiles": dias_habiles,
+                        "Terna": terna
+                })
+
+            ternas_df = pd.DataFrame(ternas_explotadas)
+
             with carga_trabajo:
                 st.markdown("### Carga laboral por reclutador")
                 fig, ax = plt.subplots(figsize=(5, 3))
@@ -352,21 +376,6 @@ if sheet_url:
             ternas, alertas = st.columns([2,1])
             with ternas:
                 st.markdown("### Envío de ternas por posición")
-                # Primero preparamos los datos planos para graficar
-                ternas_explotadas = []
-
-                for idx, row in resumen_final.iterrows():
-                    for fecha_ts, dias_habiles, terna in zip(row["Fecha"], row["Dias_habiles_a_terna"], row["Terna"]):
-                        fecha_real = pd.to_datetime(fecha_ts, unit='ms')  # Convertimos timestamp a fecha legible
-                        ternas_explotadas.append({
-                            "Posicion": row["Posicion"],
-                            "Reclutador": row["Nombre reclutador"],
-                            "Fecha": fecha_real,
-                            "Dias_habiles": dias_habiles,
-                            "Terna": terna
-                        })
-
-                ternas_df = pd.DataFrame(ternas_explotadas)
 
                 # Creamos el gráfico
                 plt.figure(figsize=(12, 6))
@@ -511,6 +520,11 @@ if sheet_url:
         
             # Obtenemos fecha de apertura para cada posición
             fechas_apertura = df.groupby("Posicion")["Fecha"].min().reset_index().rename(columns={"Fecha": "Fecha_apertura"})
+            hoy = pd.Timestamp.today().normalize()
+            fechas_apertura["Dias_habiles_abierta"] = fechas_apertura["Fecha_apertura"].apply(
+                lambda apertura: np.busday_count(apertura.date(), hoy.date())
+            )
+
         
             # Mergeamos para tener apertura y cierre
             cerradas = cerradas.merge(fechas_apertura, on="Posicion")
