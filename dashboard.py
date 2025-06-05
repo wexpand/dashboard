@@ -278,6 +278,13 @@ if sheet_url:
         # Calculamos apertura de cada posición
         fechas_apertura = df.groupby("Posicion")["Fecha"].min().reset_index().rename(columns={"Fecha": "Fecha_apertura"})
 
+        # Aquí agregamos los días hábiles para TODAS las posiciones
+        hoy = pd.Timestamp.today().normalize()
+        fechas_apertura["Dias_habiles_abierta"] = fechas_apertura["Fecha_apertura"].apply(
+            lambda apertura: np.busday_count(apertura.date(), hoy.date())
+        )
+
+
         # Filtramos los registros donde efectivamente hubo envío de terna
         df_ternas = df[df["Terna"] > 0].copy()
 
