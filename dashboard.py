@@ -159,6 +159,11 @@ def evaluar_alertas_sourcing(df):
     
     # Primero calculamos fecha de apertura por posición
     fechas_apertura = df.groupby("Posicion")["Fecha"].min().reset_index().rename(columns={"Fecha": "Fecha_apertura"})
+    # Calculamos días hábiles desde apertura para TODAS LAS POSICIONES
+    hoy = pd.Timestamp.today().normalize()
+    fechas_apertura["Dias_habiles_abierta"] = fechas_apertura["Fecha_apertura"].apply(
+        lambda apertura: np.busday_count(apertura.date(), hoy.date())
+    )
     
     # Unimos la fecha de apertura al dataframe principal
     df = df.merge(fechas_apertura, on="Posicion", how="left")
@@ -524,7 +529,6 @@ if sheet_url:
             fechas_apertura["Dias_habiles_abierta"] = fechas_apertura["Fecha_apertura"].apply(
                 lambda apertura: np.busday_count(apertura.date(), hoy.date())
             )
-
         
             # Mergeamos para tener apertura y cierre
             cerradas = cerradas.merge(fechas_apertura, on="Posicion")
