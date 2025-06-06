@@ -417,10 +417,54 @@ if sheet_url:
                 
         #Segunda página
         elif pagina == "Evaluación y Conversión":
-            st.markdown("### Etapa 1: Captación y evaluación por reclutador")
+            
+            d_reclutador, d_cliente, flujo_diario = st.columns([1,1,2])
+            with d_reclutador:
+                st.markdown("### Descarte por reclutadores")
+                etapa2 = {
+                    "Hard Skills": df.get("Screening. CNV. Perfil no calificado (hard skills)", pd.Series([0])).sum(),
+                    "Fuera de presupuesto": df.get("Screening. CNV. Fuera de presupuesto", pd.Series([0])).sum(),
+                    "Soft Skills": df.get("Screening. CNV. Soft Skills", pd.Series([0])).sum(),
+                    "Inglés": df.get("Screening. CNV. Nivel de ingles", pd.Series([0])).sum(),
+                    "No se presentó": df.get("Screening. CNV. No se presento / Inpuntual", pd.Series([0])).sum(),
+                    "Localidad": df.get("Screening. CNV. Localidad", pd.Series([0])).sum()
+                }
+                etapa2 = {k: v for k, v in etapa2.items() if v > 0}
+                if etapa2:
+                    fig3, ax3 = plt.subplots(figsize=(3,3))
+                    ax3.pie(etapa2.values(), labels=etapa2.keys(), autopct='%1.1f%%', startangle=140, colors=plt.get_cmap('Pastel1').colors)
+                    ax3.axis('equal')
+                    st.pyplot(fig3)
 
-            col1, col2 = st.columns(2)
-            with col1:
+            with d_cliente:
+                st.markdown("### Descartes por cliente")
+                etapa3 = {
+                    "Química": df.get("S. Cliente. Quimica personal", pd.Series([0])).sum(),
+                    "Inconsistencias": df.get("S. Cliente. Inconsistencias en expertise", pd.Series([0])).sum(),
+                    "Perfil": df.get("S. Cliente. No cumple con el perfil", pd.Series([0])).sum(),
+                    "Inglés": df.get("S. Cliente. Nivel de ingles", pd.Series([0])).sum(),
+                    "Sobrecalificado": df.get("S. Cliente. Sobrecalificado", pd.Series([0])).sum()
+                }
+                etapa3 = {k: v for k, v in etapa3.items() if v > 0}
+                if etapa3:
+                    fig4, ax4 = plt.subplots(figsize=(5,5))
+                    ax4.pie(etapa3.values(), labels=etapa3.keys(), autopct='%1.1f%%', startangle=140, colors=plt.get_cmap('Pastel2').colors)
+                    ax4.axis('equal')
+                    st.pyplot(fig4) 
+
+            with flujo_diario:
+                st.markdown("### Flujo diario de candidatos")
+                by_date = df_filtrado.groupby("Fecha")[["Recruitment. Candidatos nuevos", "Recruitment. Candidatos Viables", "Candidatos contratados"]].sum()
+                if not by_date.empty:
+                    fig6, ax6 = plt.subplots(figsize=(12, 3))
+                    by_date.plot(ax=ax6)
+                    ax6.set_title("Flujo diario de candidatos")
+                    ax6.set_xlabel("Fecha")
+                    ax6.set_ylabel("Cantidad")
+                    st.pyplot(fig6)
+
+            tendencias, embudo, conversion = st.columns(3)
+            with tendencias:
                 st.markdown("### Tendencia diaria por fuente vs. metas")
 
                 daily = df_filtrado.groupby("Fecha")[["Recruitment. Candidatos Indeed", "Recruitment. Busqueda directa"]].sum()
@@ -466,30 +510,23 @@ if sheet_url:
 
                 st.pyplot(fig)
 
-                
-
-            with col2:
-                st.markdown("### Descarte por reclutadores")
-                etapa2 = {
-                    "Hard Skills": df_filtrado.get("Screening. CNV. Perfil no calificado (hard skills)", pd.Series([0])).sum(),
-                    "Fuera de presupuesto": df_filtrado.get("Screening. CNV. Fuera de presupuesto", pd.Series([0])).sum(),
-                    "Soft Skills": df_filtrado.get("Screening. CNV. Soft Skills", pd.Series([0])).sum(),
-                    "Inglés": df_filtrado.get("Screening. CNV. Nivel de ingles", pd.Series([0])).sum(),
-                    "No se presentó": df_filtrado.get("Screening. CNV. No se presento / Inpuntual", pd.Series([0])).sum(),
-                    "Localidad": df_filtrado.get("Screening. CNV. Localidad", pd.Series([0])).sum()
+            with embudo:
+                st.markdown("### Embudo de Reclutamiento")
+                funnel_data = {
+                    "Indeed": df.get("Recruitment. Candidatos Indeed", pd.Series([0])).sum(),
+                    "RCRM": df.get("Recruitment. Candidatos R.CRM", pd.Series([0])).sum(),
+                    "Viables": df.get("Recruitment. Candidatos Viables", pd.Series([0])).sum(),
+                    "Contratados": df.get("Candidatos contratados", pd.Series([0])).sum()
                 }
-                etapa2 = {k: v for k, v in etapa2.items() if v > 0}
-                if etapa2:
-                    fig3, ax3 = plt.subplots(figsize=(3,3))
-                    ax3.pie(etapa2.values(), labels=etapa2.keys(), autopct='%1.1f%%', startangle=140, colors=plt.get_cmap('Pastel1').colors)
-                    ax3.axis('equal')
-                    st.pyplot(fig3)
-
-
-            col3, col4 = st.columns([1, 1])
-            with col3:
+                fig2, ax2 = plt.subplots(figsize=(12, 10))
+                ax2.barh(list(funnel_data.keys())[::-1], list(funnel_data.values())[::-1], color="#4C72B0")
+                ax2.set_title("Embudo de Reclutamiento")
+                ax2.set_xlabel("Cantidad de Candidatos")
+                st.pyplot(fig2)         
+                
+            with conversion:
                 st.markdown("### Conversión de Viables a Contratados")
-                by_vacancy = df_filtrado.groupby("Posicion")[["Recruitment. Candidatos nuevos", "Recruitment. Candidatos Viables", "Candidatos contratados"]].sum()
+                by_vacancy = df.groupby("Posicion")[["Recruitment. Candidatos nuevos", "Recruitment. Candidatos Viables", "Candidatos contratados"]].sum()
                 if not by_vacancy.empty:
                     conversion = (by_vacancy["Candidatos contratados"] / by_vacancy["Recruitment. Candidatos Viables"]).fillna(0) * 100
                     conversion = conversion[conversion > 0]
@@ -498,23 +535,8 @@ if sheet_url:
                         ax5.barh(conversion.index, conversion.values, color="#C44E52")
                         ax5.set_title("Tasa de Conversión de Viables a Contratados")
                         ax5.set_xlabel("% Conversión")
-                        st.pyplot(fig5)
+                        st.pyplot(fig5)       
 
-            with col4:
-                st.markdown("### Descartes por cliente")
-                etapa3 = {
-                    "Química": df_filtrado.get("S. Cliente. Quimica personal", pd.Series([0])).sum(),
-                    "Inconsistencias": df_filtrado.get("S. Cliente. Inconsistencias en expertise", pd.Series([0])).sum(),
-                    "Perfil": df_filtrado.get("S. Cliente. No cumple con el perfil", pd.Series([0])).sum(),
-                    "Inglés": df_filtrado.get("S. Cliente. Nivel de ingles", pd.Series([0])).sum(),
-                    "Sobrecalificado": df_filtrado.get("S. Cliente. Sobrecalificado", pd.Series([0])).sum()
-                }
-                etapa3 = {k: v for k, v in etapa3.items() if v > 0}
-                if etapa3:
-                    fig4, ax4 = plt.subplots(figsize=(5,5))
-                    ax4.pie(etapa3.values(), labels=etapa3.keys(), autopct='%1.1f%%', startangle=140, colors=plt.get_cmap('Pastel2').colors)
-                    ax4.axis('equal')
-                    st.pyplot(fig4) 
         elif pagina == "Posiciones cerradas":
             st.markdown("## Posiciones cerradas")
         
