@@ -530,7 +530,7 @@ if sheet_url:
                 }
 
                 # Graficamos como antes
-                fig2, ax2 = plt.subplots(figsize=(12, 10))
+                fig2, ax2 = plt.subplots(figsize=(8, 4.5))
                 ax2.barh(list(funnel_data.keys())[::-1], list(funnel_data.values())[::-1], color="#4C72B0")
                 ax2.set_title("Embudo de Reclutamiento (última actualización por posición)")
                 ax2.set_xlabel("Cantidad de Candidatos")
