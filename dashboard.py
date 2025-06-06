@@ -440,8 +440,6 @@ if sheet_url:
 
 
             with d_cliente:
-                st.markdown("### Descartes por cliente (solo porcentaje)")
-                # Filtramos solo por posición (sin tocar fechas)
                 if posicion_sel == "Todas":
                     df_posicion = df
                     resumen_ternas_posicion = resumen_ternas
@@ -449,25 +447,20 @@ if sheet_url:
                     df_posicion = df[df["Posicion"] == posicion_sel]
                     resumen_ternas_posicion = resumen_ternas[resumen_ternas["Posicion"] == posicion_sel]
             
-                # Total de candidatos enviados en ternas (histórico)
-                total_ternados = resumen_ternas_posicion["Total candidatos enviados"].sum()
+                total_ternados = resumen_ternas_posicion["Total candidatos enviados"].sum() or 0
+                total_contratados = df_posicion["Candidatos contratados"].sum() or 0
             
-                # Total de contratados (histórico)
-                total_contratados = df_posicion["Candidatos contratados"].sum()
-            
-                # Calculamos descartados por cliente
                 descartados_cliente = total_ternados - total_contratados
                 porcentaje_descartados = (descartados_cliente / total_ternados * 100) if total_ternados > 0 else 0
             
-                # Graficamos el resultado
                 labels = ['Contratados', 'Descartados por Cliente']
                 sizes = [total_contratados, descartados_cliente]
                 colors = ['#4CAF50', '#FF7043']
             
-                fig, ax = plt.subplots(figsize=(6, 6))
+                fig, ax = plt.subplots(figsize=(8, 4.5))
                 ax.pie(sizes, labels=labels, autopct='%1.1f%%', startangle=140, colors=colors)
                 ax.axis('equal')
-                plt.tight_layout()
+                plt.tight_layout(pad=2.0)
                 st.pyplot(fig)
 
             with flujo_diario:
