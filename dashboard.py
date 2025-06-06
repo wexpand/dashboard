@@ -440,7 +440,7 @@ if sheet_url:
 
 
             with d_cliente:
-                st.markdown("### Descarte por reclutadores")
+                st.markdown("### Descarte por cliente")
                 if posicion_sel == "Todas":
                     df_posicion = df
                     resumen_ternas_posicion = resumen_ternas
