@@ -460,7 +460,7 @@ if sheet_url:
                 st.markdown("### Flujo diario de candidatos")
                 by_date = df_filtrado.groupby("Fecha")[["Recruitment. Candidatos nuevos", "Recruitment. Candidatos Viables", "Candidatos contratados"]].sum()
                 if not by_date.empty:
-                    fig6, ax6 = plt.subplots(figsize=(12, 4.5))
+                    fig6, ax6 = plt.subplots(figsize=(8, 4.5))
                     by_date.plot(ax=ax6)
                     ax6.set_title("Flujo diario de candidatos")
                     ax6.set_xlabel("Fecha")
