@@ -432,7 +432,7 @@ if sheet_url:
                 }
                 etapa2 = {k: v for k, v in etapa2.items() if v > 0}
                 if etapa2:
-                    fig3, ax3 = plt.subplots(figsize=(12, 2.5))
+                    fig3, ax3 = plt.subplots(figsize=(8, 4.5))
                     ax3.pie(etapa2.values(), labels=etapa2.keys(), autopct='%1.1f%%', startangle=140, colors=plt.get_cmap('Pastel1').colors)
                     ax3.axis('equal')
                     st.pyplot(fig3)
@@ -460,7 +460,7 @@ if sheet_url:
                 st.markdown("### Flujo diario de candidatos")
                 by_date = df_filtrado.groupby("Fecha")[["Recruitment. Candidatos nuevos", "Recruitment. Candidatos Viables", "Candidatos contratados"]].sum()
                 if not by_date.empty:
-                    fig6, ax6 = plt.subplots(figsize=(8, 4.5))
+                    fig6, ax6 = plt.subplots(figsize=(12, 2.5))
                     by_date.plot(ax=ax6)
                     ax6.set_title("Flujo diario de candidatos")
                     ax6.set_xlabel("Fecha")
