@@ -432,7 +432,7 @@ if sheet_url:
                 }
                 etapa2 = {k: v for k, v in etapa2.items() if v > 0}
                 if etapa2:
-                    fig3, ax3 = plt.subplots(figsize=(8, 4.5))
+                    fig3, ax3 = plt.subplots(figsize=(12, 2.5))
                     ax3.pie(etapa2.values(), labels=etapa2.keys(), autopct='%1.1f%%', startangle=140, colors=plt.get_cmap('Pastel1').colors)
                     ax3.axis('equal')
                     st.pyplot(fig3)
