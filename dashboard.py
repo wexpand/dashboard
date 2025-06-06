@@ -460,7 +460,7 @@ if sheet_url:
                 st.markdown("### Flujo diario de candidatos")
                 by_date = df_filtrado.groupby("Fecha")[["Recruitment. Candidatos nuevos", "Recruitment. Candidatos Viables", "Candidatos contratados"]].sum()
                 if not by_date.empty:
-                    fig6, ax6 = plt.subplots(figsize=(12, 2.5))
+                    fig6, ax6 = plt.subplots(figsize=(12, 4.5))
                     by_date.plot(ax=ax6)
                     ax6.set_title("Flujo diario de candidatos")
                     ax6.set_xlabel("Fecha")
@@ -553,75 +553,77 @@ if sheet_url:
                         st.pyplot(fig5)       
 
         elif pagina == "Posiciones cerradas":
-            st.markdown("## Posiciones cerradas")
-        
-            # Normalizamos y preparamos datos
-            df["¿Posicion abierta?"] = df["¿Posicion abierta?"].astype(str).str.lower().str.strip()
-            df["Nombre reclutador"] = df["Nombre reclutador"].astype(str).str.strip()
-            df["Posicion"] = df["Posicion"].astype(str).str.strip()
-            df = df.dropna(subset=["Fecha"])
-            df["Fecha"] = pd.to_datetime(df["Fecha"], dayfirst=True, errors="coerce")
-        
-            # Tomamos el último registro por posición
-            ultimos = df.loc[df.groupby("Posicion")["Fecha"].idxmax()]
-        
-            # Solo posiciones cerradas
-            cerradas = ultimos[ultimos["¿Posicion abierta?"] == "no"]
-        
-            # Obtenemos fecha de apertura para cada posición
-            fechas_apertura = df.groupby("Posicion")["Fecha"].min().reset_index().rename(columns={"Fecha": "Fecha_apertura"})
-            hoy = pd.Timestamp.today().normalize()
-            fechas_apertura["Dias_habiles_abierta"] = fechas_apertura["Fecha_apertura"].apply(
-                lambda apertura: np.busday_count(apertura.date(), hoy.date())
-            )
-        
-            # Mergeamos para tener apertura y cierre
-            cerradas = cerradas.merge(fechas_apertura, on="Posicion")
-            cerradas["Dias_para_cerrar"] = (cerradas["Fecha"] - cerradas["Fecha_apertura"]).dt.days
-        
-            # Mostramos tabla de tiempos de cierre
-            st.markdown("### Tiempo de cierre por posición")
-            st.dataframe(cerradas[["Posicion", "Nombre reclutador", "Fecha_apertura", "Fecha", "Dias_para_cerrar"]], use_container_width=True)
-        
-            # Conversiones sobre las posiciones cerradas
-            posiciones_cerradas = cerradas["Posicion"].tolist()
-            df_cerradas = df[df["Posicion"].isin(posiciones_cerradas)]
-        
-            st.markdown("### Conversión en posiciones cerradas")
-            conversion_data = df_cerradas.groupby("Posicion")[["Recruitment. Candidatos Viables", "Candidatos contratados"]].sum()
-        
-            if not conversion_data.empty:
-                conversion_data["Conversion"] = (conversion_data["Candidatos contratados"] / conversion_data["Recruitment. Candidatos Viables"]).fillna(0) * 100
-                conversion_data = conversion_data.sort_values("Conversion", ascending=False)
-        
-                fig, ax = plt.subplots(figsize=(10, 5))
-                ax.barh(conversion_data.index, conversion_data["Conversion"], color="#4CAF50")
-                ax.set_xlabel("% de Conversión")
-                ax.set_title("Conversión por posición cerrada")
-                st.pyplot(fig)
-            else:
-                st.info("No hay datos suficientes para calcular la conversión.")
-        
-            # Descarte por reclutador (solo cerradas)
-            st.markdown("### Descarte por reclutador (solo posiciones cerradas)")
-            descarte_por_reclutador = df_cerradas.groupby("Nombre reclutador")[[
-                "Screening. CNV. Perfil no calificado (hard skills)",
-                "Screening. CNV. Soft Skills",
-                "Screening. CNV. Fuera de presupuesto",
-                "Screening. CNV. Nivel de ingles",
-                "Screening. CNV. No se presento / Inpuntual",
-                "Screening. CNV. Localidad"
-            ]].sum()
-        
-            if not descarte_por_reclutador.empty:
-                fig, ax = plt.subplots(figsize=(12, 6))
-                descarte_por_reclutador.plot(kind='bar', stacked=True, ax=ax)
-                ax.set_ylabel("Cantidad de descartes")
-                ax.set_title("Razones de descarte por reclutador")
-                plt.xticks(rotation=45)
-                st.pyplot(fig)
-            else:
-                st.info("No hay datos de descartes en posiciones cerradas.")
+            
+            t_cerrado, conversion, descarte = st.columns(3)
+            with t_cerrado:
+                # Normalizamos y preparamos datos
+                df["¿Posicion abierta?"] = df["¿Posicion abierta?"].astype(str).str.lower().str.strip()
+                df["Nombre reclutador"] = df["Nombre reclutador"].astype(str).str.strip()
+                df["Posicion"] = df["Posicion"].astype(str).str.strip()
+                df = df.dropna(subset=["Fecha"])
+                df["Fecha"] = pd.to_datetime(df["Fecha"], dayfirst=True, errors="coerce")
+            
+                # Tomamos el último registro por posición
+                ultimos = df.loc[df.groupby("Posicion")["Fecha"].idxmax()]
+            
+                # Solo posiciones cerradas
+                cerradas = ultimos[ultimos["¿Posicion abierta?"] == "no"]
+            
+                # Obtenemos fecha de apertura para cada posición
+                fechas_apertura = df.groupby("Posicion")["Fecha"].min().reset_index().rename(columns={"Fecha": "Fecha_apertura"})
+                hoy = pd.Timestamp.today().normalize()
+                fechas_apertura["Dias_habiles_abierta"] = fechas_apertura["Fecha_apertura"].apply(
+                    lambda apertura: np.busday_count(apertura.date(), hoy.date())
+                )
+            
+                # Mergeamos para tener apertura y cierre
+                cerradas = cerradas.merge(fechas_apertura, on="Posicion")
+                cerradas["Dias_para_cerrar"] = (cerradas["Fecha"] - cerradas["Fecha_apertura"]).dt.days
+            
+                # Mostramos tabla de tiempos de cierre
+                st.markdown("### Tiempo de cierre por posición")
+                st.dataframe(cerradas[["Posicion", "Nombre reclutador", "Fecha_apertura", "Fecha", "Dias_para_cerrar"]], use_container_width=True)
+
+            with conversion:
+                # Conversiones sobre las posiciones cerradas
+                posiciones_cerradas = cerradas["Posicion"].tolist()
+                df_cerradas = df[df["Posicion"].isin(posiciones_cerradas)]
+            
+                st.markdown("### Conversión en posiciones cerradas")
+                conversion_data = df_cerradas.groupby("Posicion")[["Recruitment. Candidatos Viables", "Candidatos contratados"]].sum()
+            
+                if not conversion_data.empty:
+                    conversion_data["Conversion"] = (conversion_data["Candidatos contratados"] / conversion_data["Recruitment. Candidatos Viables"]).fillna(0) * 100
+                    conversion_data = conversion_data.sort_values("Conversion", ascending=False)
+            
+                    fig, ax = plt.subplots(figsize=(10, 5))
+                    ax.barh(conversion_data.index, conversion_data["Conversion"], color="#4CAF50")
+                    ax.set_xlabel("% de Conversión")
+                    ax.set_title("Conversión por posición cerrada")
+                    st.pyplot(fig)
+                else:
+                    st.info("No hay datos suficientes para calcular la conversión.")
+            with descarte:
+                # Descarte por reclutador (solo cerradas)
+                st.markdown("### Descarte por reclutador (solo posiciones cerradas)")
+                descarte_por_reclutador = df_cerradas.groupby("Nombre reclutador")[[
+                    "Screening. CNV. Perfil no calificado (hard skills)",
+                    "Screening. CNV. Soft Skills",
+                    "Screening. CNV. Fuera de presupuesto",
+                    "Screening. CNV. Nivel de ingles",
+                    "Screening. CNV. No se presento / Inpuntual",
+                    "Screening. CNV. Localidad"
+                ]].sum()
+            
+                if not descarte_por_reclutador.empty:
+                    fig, ax = plt.subplots(figsize=(12, 6))
+                    descarte_por_reclutador.plot(kind='bar', stacked=True, ax=ax)
+                    ax.set_ylabel("Cantidad de descartes")
+                    ax.set_title("Razones de descarte por reclutador")
+                    plt.xticks(rotation=45)
+                    st.pyplot(fig)
+                else:
+                    st.info("No hay datos de descartes en posiciones cerradas.")
 
     
     except Exception as e:
