@@ -431,7 +431,7 @@ if sheet_url:
                 }
                 etapa2 = {k: v for k, v in etapa2.items() if v > 0}
                 if etapa2:
-                    fig3, ax3 = plt.subplots(figsize=(3,3))
+                    fig3, ax3 = plt.subplots(figsize=(8, 4.5))
                     ax3.pie(etapa2.values(), labels=etapa2.keys(), autopct='%1.1f%%', startangle=140, colors=plt.get_cmap('Pastel1').colors)
                     ax3.axis('equal')
                     st.pyplot(fig3)
@@ -447,7 +447,7 @@ if sheet_url:
                 }
                 etapa3 = {k: v for k, v in etapa3.items() if v > 0}
                 if etapa3:
-                    fig4, ax4 = plt.subplots(figsize=(5,5))
+                    fig4, ax4 = plt.subplots(figsize=(8, 4.5))
                     ax4.pie(etapa3.values(), labels=etapa3.keys(), autopct='%1.1f%%', startangle=140, colors=plt.get_cmap('Pastel2').colors)
                     ax4.axis('equal')
                     st.pyplot(fig4) 
@@ -456,7 +456,7 @@ if sheet_url:
                 st.markdown("### Flujo diario de candidatos")
                 by_date = df_filtrado.groupby("Fecha")[["Recruitment. Candidatos nuevos", "Recruitment. Candidatos Viables", "Candidatos contratados"]].sum()
                 if not by_date.empty:
-                    fig6, ax6 = plt.subplots(figsize=(12, 3))
+                    fig6, ax6 = plt.subplots(figsize=(12, 4.5))
                     by_date.plot(ax=ax6)
                     ax6.set_title("Flujo diario de candidatos")
                     ax6.set_xlabel("Fecha")
@@ -483,7 +483,7 @@ if sheet_url:
                     "Recruitment. Busqueda directa": [meta_diaria["Recruitment. Busqueda directa"] * (i+1) for i in range(num_dias)]
                 }
 
-                fig, ax = plt.subplots(figsize=(12, 8))
+                fig, ax = plt.subplots(figsize=(8, 4.5))
 
                 x = np.arange(num_dias)
 
@@ -506,7 +506,7 @@ if sheet_url:
                 ax.set_title("Tendencia diaria por fuente vs. metas", fontsize=14, weight="bold")
                 ax.legend()
                 ax.grid(axis='y', linestyle=':', alpha=0.6)
-                plt.tight_layout()
+                plt.tight_layout(pad=2.0)
 
                 st.pyplot(fig)
 
@@ -522,8 +522,9 @@ if sheet_url:
                 ax2.barh(list(funnel_data.keys())[::-1], list(funnel_data.values())[::-1], color="#4C72B0")
                 ax2.set_title("Embudo de Reclutamiento")
                 ax2.set_xlabel("Cantidad de Candidatos")
+                plt.tight_layout(pad=2.0)
                 st.pyplot(fig2)         
-                
+
             with conversion:
                 st.markdown("### Conversión de Viables a Contratados")
                 by_vacancy = df.groupby("Posicion")[["Recruitment. Candidatos nuevos", "Recruitment. Candidatos Viables", "Candidatos contratados"]].sum()
@@ -531,10 +532,11 @@ if sheet_url:
                     conversion = (by_vacancy["Candidatos contratados"] / by_vacancy["Recruitment. Candidatos Viables"]).fillna(0) * 100
                     conversion = conversion[conversion > 0]
                     if not conversion.empty:
-                        fig5, ax5 = plt.subplots(figsize=(5,5))
+                        fig5, ax5 = plt.subplots(figsize=(8,4.5))
                         ax5.barh(conversion.index, conversion.values, color="#C44E52")
                         ax5.set_title("Tasa de Conversión de Viables a Contratados")
                         ax5.set_xlabel("% Conversión")
+                        plt.tight_layout(pad=2.0)
                         st.pyplot(fig5)       
 
         elif pagina == "Posiciones cerradas":
