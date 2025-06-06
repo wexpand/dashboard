@@ -376,6 +376,7 @@ if sheet_url:
                 ax.bar(resumen_completo["Nombre reclutador"], resumen_completo["Posiciones abiertas"], color=colores)
                 ax.set_ylabel("Posiciones abiertas")
                 ax.set_xlabel("Reclutador")
+                ax.grid(True)
                 plt.xticks(rotation=45)
                 st.pyplot(fig)
             
@@ -405,7 +406,7 @@ if sheet_url:
                 plt.xlabel("Días hábiles desde apertura")
                 plt.ylabel("Posición")
                 #plt.title("Envío de ternas por posición")
-                plt.grid(axis='x', linestyle=':', alpha=0.4)
+                plt.grid(True)
                 #plt.legend(title="Posiciones", bbox_to_anchor=(1.05, 1), loc='upper left')
                 st.pyplot(plt)
             with alertas:
@@ -464,6 +465,7 @@ if sheet_url:
                     ax6.set_title("Flujo diario de candidatos")
                     ax6.set_xlabel("Fecha")
                     ax6.set_ylabel("Cantidad")
+                    ax6.grid(True)
                     st.pyplot(fig6)
                     plt.tight_layout(pad=2.0)
 
