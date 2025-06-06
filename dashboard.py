@@ -435,6 +435,8 @@ if sheet_url:
                     ax3.pie(etapa2.values(), labels=etapa2.keys(), autopct='%1.1f%%', startangle=140, colors=plt.get_cmap('Pastel1').colors)
                     ax3.axis('equal')
                     st.pyplot(fig3)
+                    plt.tight_layout(pad=2.0)
+
 
             with d_cliente:
                 st.markdown("### Descartes por cliente")
@@ -451,6 +453,7 @@ if sheet_url:
                     ax4.pie(etapa3.values(), labels=etapa3.keys(), autopct='%1.1f%%', startangle=140, colors=plt.get_cmap('Pastel2').colors)
                     ax4.axis('equal')
                     st.pyplot(fig4) 
+                    plt.tight_layout(pad=2.0)
 
             with flujo_diario:
                 st.markdown("### Flujo diario de candidatos")
@@ -462,6 +465,7 @@ if sheet_url:
                     ax6.set_xlabel("Fecha")
                     ax6.set_ylabel("Cantidad")
                     st.pyplot(fig6)
+                    plt.tight_layout(pad=2.0)
 
             tendencias, embudo, conversion = st.columns(3)
             with tendencias:
@@ -512,18 +516,25 @@ if sheet_url:
 
             with embudo:
                 st.markdown("### Embudo de Reclutamiento")
+                # Primero tomamos el último registro de cada posición
+                ultimos_por_posicion = df_filtrado.loc[df_filtrado.groupby("Posicion")["Fecha"].idxmax()]
+
+                # Luego sumamos los valores globales de esos últimos registros
                 funnel_data = {
-                    "Indeed": df.get("Recruitment. Candidatos Indeed", pd.Series([0])).sum(),
-                    "RCRM": df.get("Recruitment. Candidatos R.CRM", pd.Series([0])).sum(),
-                    "Viables": df.get("Recruitment. Candidatos Viables", pd.Series([0])).sum(),
-                    "Contratados": df.get("Candidatos contratados", pd.Series([0])).sum()
+                    "Indeed": ultimos_por_posicion.get("Recruitment. Candidatos Indeed", pd.Series([0])).sum(),
+                    "RCRM": ultimos_por_posicion.get("Recruitment. Candidatos R.CRM", pd.Series([0])).sum(),
+                    "Viables": ultimos_por_posicion.get("Recruitment. Candidatos Viables", pd.Series([0])).sum(),
+                    "Contratados": ultimos_por_posicion.get("Candidatos contratados", pd.Series([0])).sum()
                 }
+
+                # Graficamos como antes
                 fig2, ax2 = plt.subplots(figsize=(12, 10))
                 ax2.barh(list(funnel_data.keys())[::-1], list(funnel_data.values())[::-1], color="#4C72B0")
-                ax2.set_title("Embudo de Reclutamiento")
+                ax2.set_title("Embudo de Reclutamiento (última actualización por posición)")
                 ax2.set_xlabel("Cantidad de Candidatos")
                 plt.tight_layout(pad=2.0)
-                st.pyplot(fig2)         
+                st.pyplot(fig2)
+         
 
             with conversion:
                 st.markdown("### Conversión de Viables a Contratados")
