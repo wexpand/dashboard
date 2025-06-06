@@ -382,7 +382,7 @@ if sheet_url:
             
             with pos_reclutador:
                 st.markdown("### Detalle de posiciones abiertas")
-                st.dataframe(resumen_tabla, use_container_width=True, height=500)
+                st.dataframe(resumen_tabla, use_container_width=True, height=400)
 
             # Evaluamos sourcing health
             alertas_sourcing = evaluar_alertas_sourcing(df)
@@ -413,7 +413,7 @@ if sheet_url:
                 # Mostramos en el dashboard
                 st.markdown("### Alertas del día")
                 styled_alertas = alertas_sourcing.style.applymap(color_alerta, subset=["Alerta sourcing"])
-                st.dataframe(styled_alertas, use_container_width=True, height=500)
+                st.dataframe(styled_alertas, use_container_width=True, height=400)
 
                 
         #Segunda página
